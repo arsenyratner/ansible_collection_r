@@ -45,7 +45,11 @@
 
 - name: Create ports tree
   ansible.builtin.command:
-    cmd: poudriere ports -c -p {{ item.treename }} 
+    cmd: >-
+      poudriere ports -c -p {{ item.treename }}
+      {%if item.method is defined %}-m {{ item.method }}{% endif %}
+      {%if item.branch is defined %}-B {{ item.branch }}{% endif %}
+      {%if item.filesystem is defined %}-f {{ item.filesystem }}{% endif %}
     creates: "{{ poudriere_basefs }}/ports/{{ item.treename }}"
   loop: "{{ poudriere_portstrees }}"
   loop_control:
