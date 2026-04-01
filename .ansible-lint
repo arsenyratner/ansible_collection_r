@@ -26,3 +26,5 @@ skip_list:
   # - role-name  # Role name {} does not match ``^[a-z][a-z0-9_]+$`` pattern'
   # - package-latest # Package installs should not use latest
   # - no-handler  # Tasks that run when changed should likely be handlers
+  - schema[galaxy]
+  - galaxy[no-changelog]
