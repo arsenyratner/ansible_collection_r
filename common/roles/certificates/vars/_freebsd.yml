@@ -1,5 +1,0 @@
-certificates_packages:
-  - openssl
-  - py311-cryptography
-certificates_default_owner: root
-certificates_default_group: wheel

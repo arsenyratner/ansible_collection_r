@@ -1,10 +1,14 @@
-- name: "Load a variable file based on the OS distribution"
-  ansible.builtin.include_vars: 
-    file: "{{ lookup('ansible.builtin.first_found', sambadc_lookup_distr) }}"
+- name: Distribution specific variables
+  vars:
+    distribution_firstfound_paths: ['vars']
+  ansible.builtin.include_vars:
+    file: "{{ lookup('ansible.builtin.first_found', distribution_firstfound) }}"
 
 - name: Distribution specific tasks
+  vars:
+    distribution_firstfound_paths: ['tasks']
   ansible.builtin.include_tasks:
-    file: "{{ lookup('ansible.builtin.first_found', sambadc_lookup_distr) }}"
+    file: "{{ lookup('ansible.builtin.first_found', distribution_firstfound) }}"
 
 - name: Check, are domain alredy provisioned?
   ansible.builtin.shell: samba-tool domain info 127.0.0.1

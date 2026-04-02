@@ -1,4 +1,0 @@
-- name: Install packages
-  community.general.pkgng:
-    name: "{{ certificates_packages }}"
-    state: present

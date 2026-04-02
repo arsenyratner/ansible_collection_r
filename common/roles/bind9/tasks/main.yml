@@ -1,20 +1,32 @@
 - name: Distribution specific variables
-  ansible.builtin.include_vars: "{{ item }}"
-  with_first_found:
-    - "_{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}.yml"
-    - "_{{ ansible_distribution | lower }}.yml"
-    - "_{{ ansible_os_family | lower }}.yml"
-  ignore_errors: true
-  failed_when: false
+  vars:
+    distribution_firstfound_paths: ['vars']
+  ansible.builtin.include_vars:
+    file: "{{ lookup('ansible.builtin.first_found', distribution_firstfound) }}"
 
 - name: Distribution specific tasks
+  vars:
+    distribution_firstfound_paths: ['tasks']
   ansible.builtin.include_tasks:
-    file: "{{ item }}"
-  with_first_found:
-    - "_{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}.yml"
-    - "_{{ ansible_distribution | lower }}.yml"
-    - "_{{ ansible_os_family | lower }}.yml"
-  ignore_errors: true
+    file: "{{ lookup('ansible.builtin.first_found', distribution_firstfound) }}"
+
+# - name: Distribution specific variables
+#   ansible.builtin.include_vars: "{{ item }}"
+#   with_first_found:
+#     - "_{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}.yml"
+#     - "_{{ ansible_distribution | lower }}.yml"
+#     - "_{{ ansible_os_family | lower }}.yml"
+#   ignore_errors: true
+#   failed_when: false
+
+# - name: Distribution specific tasks
+#   ansible.builtin.include_tasks:
+#     file: "{{ item }}"
+#   with_first_found:
+#     - "_{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}.yml"
+#     - "_{{ ansible_distribution | lower }}.yml"
+#     - "_{{ ansible_os_family | lower }}.yml"
+#   ignore_errors: true
 
 - name: Create dirs
   ansible.builtin.file:
