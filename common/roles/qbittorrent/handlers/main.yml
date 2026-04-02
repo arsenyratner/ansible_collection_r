@@ -1,0 +1,7 @@
+- name: systemctl restart qbittorrent-nox
+  ansible.builtin.systemd:
+    name: "{{ qbittorrentnox_unit }}"
+    enabled: True
+    daemon_reload: True
+    state: restarted
+  listen: restart qbittorrentnox

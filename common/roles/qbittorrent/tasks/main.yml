@@ -1,0 +1,101 @@
+- name: Distribution specific variables
+  vars:
+    distribution_firstfound_paths: ['vars']
+  ansible.builtin.include_vars:
+    file: "{{ lookup('ansible.builtin.first_found', distribution_firstfound) }}"
+
+- name: Distribution specific tasks
+  vars:
+    distribution_firstfound_paths: ['tasks']
+  ansible.builtin.include_tasks:
+    file: "{{ lookup('ansible.builtin.first_found', distribution_firstfound) }}"
+
+- name: create user
+  ansible.builtin.user:
+    system: yes
+    state: present
+    shell: /usr/sbin/nologin
+    comment: qBittorrent nox user
+    name: "{{ qbittorrentnox_user }}"
+    home: "{{ qbittorrentnox_home }}"
+    groups: "{{ qbittorrentnox_groups | default(omit) }}"
+
+- name: create config dir
+  ansible.builtin.file:
+    state: directory
+    mode: '0755'
+    owner: "{{ qbittorrentnox_user }}"
+    group: "{{ qbittorrentnox_group }}"
+    path: "{{ qbittorrentnox_home }}/.config/qBittorrent/"
+
+- name: create download dir
+  ansible.builtin.file:
+    state: directory
+    recurse: True
+    mode: '0777'
+    owner: "{{ qbittorrentnox_user }}"
+    group: "{{ qbittorrentnox_group }}"
+    path: "{{ qbittorrentnox_download }}"
+
+- name: create categories.json
+  ansible.builtin.copy:
+    mode: "0644"
+    owner: "{{ qbittorrentnox_user }}"
+    group: "{{ qbittorrentnox_group }}"
+    dest: "{{ qbittorrentnox_home }}/.config/qBittorrent/categories.json"
+    content: |
+      {{ qbittorrentnox_categories | to_nice_json(ensure_ascii=False) }}
+  notify: restart qbittorrentnox
+
+- name: create watched_folders.json
+  ansible.builtin.copy:
+    mode: "0644"
+    owner: "{{ qbittorrentnox_user }}"
+    group: "{{ qbittorrentnox_group }}"
+    dest: "{{ qbittorrentnox_home }}/.config/qBittorrent/watched_folders.json"
+    content: |
+      {{ qbittorrentnox_watchedfolders | to_nice_json(ensure_ascii=False) }}
+  notify: restart qbittorrentnox
+
+- name: update qBittorrent.conf
+  community.general.ini_file:
+    state: present
+    no_extra_spaces: true
+    mode: "0644"
+    owner: "{{ qbittorrentnox_user }}"
+    group: "{{ qbittorrentnox_group }}"
+    path: "{{ qbittorrentnox_home }}/.config/qBittorrent/qBittorrent.conf"
+    section: "{{ qbittorrentnox_item.section }}"
+    option: "{{ qbittorrentnox_item.option }}"
+    value: "{{ qbittorrentnox_item.value }}"
+  loop: "{{ qbittorrentnox_config }}"
+  loop_control:
+    loop_var: qbittorrentnox_item
+  notify: restart qbittorrentnox
+
+- name: create unit file
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/{{ qbittorrentnox_unit }}.service
+    owner: root
+    group: root
+    mode: 0644
+    content: |
+      [Unit]
+      Description=qBittorrent-nox service
+      Documentation=man:qbittorrent-nox(1)
+      Wants=network-online.target
+      After=network-online.target nss-lookup.target
+
+      [Service]
+      Type=exec
+      User={{ qbittorrentnox_user }}
+      ExecStart=/usr/bin/qbittorrent-nox --webui-port={{ qbittorrentnox_webui_port | int }}
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: restart qbittorrentnox
+
+- name: systemctl enable
+  ansible.builtin.systemd:
+    name: qbittorrent-nox
+    enabled: True

@@ -1,0 +1,76 @@
+# qbittorrentnox_packages:
+#   - qbittorrent-nox
+qbittorrentnox_user: qbittorrent
+qbittorrentnox_group: qbittorrent
+qbittorrentnox_home: /var/lib/qbittorrent
+qbittorrentnox_download: /data/pub/download
+qbittorrentnox_groups: 
+  - fs_datapub_rw
+qbittorrentnox_webui_port: 8080
+qbittorrentnox_unit: qbittorrent-nox
+qbittorrentnox_config:
+  - section: "LegalNotice"
+    option: "Accepted"
+    value: "true"
+  - section: "BitTorrent"
+    option: 'Session\DefaultSavePath'
+    value: "/data/pub/download"
+  - section: "Preferences"
+    option: 'WebUI\Password_PBKDF2'
+    value: '"@ByteArray(im6gYOePzw1oCQv9fNeIDA==:Ez/7BzH8WabZHxrUDtRUHzDbAFw+TPp6rK1pQW/dwQbbxYO4RwZ2OaWuii+PTb28arwBy0W7mnc/ybVuh1f5bg==)"'
+  - section: "Preferences"
+    option: 'General\Locale'
+    value: "en"
+qbittorrentnox_categories:
+  'сериалы':
+    save_path: /data/pub/сериалы
+  'фильмы':
+    save_path: /data/pub/фильмы
+  'iso':
+    save_path: /data/pub/iso
+qbittorrentnox_watchedfolders:
+  "/data/pub/download":
+    add_torrent_params:
+      category: ''
+      download_limit: -1
+      download_path: ''
+      inactive_seeding_time_limit: -2
+      operating_mode: AutoManaged
+      ratio_limit: -2
+      save_path: "/data/pub/download"
+      seeding_time_limit: -2
+      skip_checking: false
+      tags: []
+      upload_limit: -1
+      use_auto_tmm: false
+    recursive: false
+  "/data/pub/сериалы":
+    add_torrent_params:
+      category: ''
+      download_limit: -1
+      download_path: ''
+      inactive_seeding_time_limit: -2
+      operating_mode: AutoManaged
+      ratio_limit: -2
+      save_path: "/data/pub/сериалы"
+      seeding_time_limit: -2
+      skip_checking: false
+      tags: []
+      upload_limit: -1
+      use_auto_tmm: false
+    recursive: false
+  "/data/pub/фильмы":
+    add_torrent_params:
+      category: ''
+      download_limit: -1
+      download_path: ''
+      inactive_seeding_time_limit: -2
+      operating_mode: AutoManaged
+      ratio_limit: -2
+      save_path: "/data/pub/фильмы"
+      seeding_time_limit: -2
+      skip_checking: false
+      tags: []
+      upload_limit: -1
+      use_auto_tmm: false
+    recursive: false
