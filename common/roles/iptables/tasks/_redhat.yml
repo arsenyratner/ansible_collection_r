@@ -16,9 +16,7 @@
 
 - name: Install iptables centos/rhel 8
   ansible.builtin.dnf:
-    name:
-      - iptables
-      - iptables-services
+    name: "{{ iptables_packages }}"
   when: ansible_distribution_major_version|int in [8,9]
 
 - name: Enable firewall on boot

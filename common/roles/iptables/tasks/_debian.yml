@@ -30,9 +30,7 @@
 
 - name: Add persistance for iptables
   ansible.builtin.apt:
-    name:
-      - iptables
-      - iptables-persistent
+    name: "{{ iptables_packages }}"
     force_apt_get: true
 
 - name: Iptables templates
