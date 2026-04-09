@@ -1,0 +1,5 @@
+- name: mtproxy restart
+  ansible.builtin.systemd_service:
+    name: mtproxy
+    state: restarted
+  listen: restart mtproxy

@@ -1,0 +1,189 @@
+- name: Distribution specific variables
+  vars:
+    distribution_firstfound_paths: ['vars']
+  ansible.builtin.include_vars:
+    file: "{{ lookup('ansible.builtin.first_found', distribution_firstfound) }}"
+
+- name: Distribution specific tasks
+  vars:
+    distribution_firstfound_paths: ['tasks']
+  ansible.builtin.include_tasks:
+    file: "{{ lookup('ansible.builtin.first_found', distribution_firstfound) }}"
+
+- name: create user
+  ansible.builtin.user:
+    state: present
+    system: true
+    shell: /usr/sbin/nologin
+    name: "{{ mtproxy_service_user }}"
+    home: "{{ mtproxy_installdir }}"
+    create_home: true
+
+- name: create dirs
+  ansible.builtin.file:
+    state: directory
+    path: "{{ mtproxy_item.path }}"
+    owner: "{{ mtproxy_item.owner | default(mtproxy_service_user) }}"
+    group: "{{ mtproxy_item.group | default(mtproxy_service_group) }}"
+    mode: "{{ mtproxy_item.mode | default('0755') }}"
+  loop: "{{ mtproxy_dirs }}"
+  loop_control:
+    loop_var: mtproxy_item
+  
+- name: Check AVX2 BMI2 support
+  block:
+    - name: check AVX2 BMI2 support
+      ansible.builtin.command: grep -q -E "avx2|bmi2" /proc/cpuinfo
+      register: mtproxy_result
+      failed_when: 
+        - mtproxy_result.rc != 0
+        - mtproxy_result.rc != 1
+      changed_when: false
+
+    - name: set AVX2 BMI2 support
+      ansible.builtin.set_fact:
+        mtproxy_avx2bmi2_support: "{{ not mtproxy_result.rc | bool }}"
+
+- name: download and extract rename create link
+  block:
+    - name: download and extract
+      ansible.builtin.unarchive:
+        src: "{{ mtproxy_url }}"
+        dest: "{{ mtproxy_installdir }}"
+        owner: "{{ mtproxy_service_user }}"
+        group: "{{ mtproxy_service_group }}"
+        remote_src: true
+        creates: "{{ mtproxy_installdir }}/mtproto-proxy-linux-x86_64{{ '_v3' if mtproxy_avx2bmi2_support }}_{{ mtproxy_release }}"
+      register: mtproxy_result
+
+    - name: rename
+      ansible.builtin.command:
+        cmd: >
+          mv 
+          "{{ mtproxy_installdir }}/mtproto-proxy-linux-x86_64{{ '_v3' if mtproxy_avx2bmi2_support }}"
+          "{{ mtproxy_installdir }}/mtproto-proxy-linux-x86_64{{ '_v3' if mtproxy_avx2bmi2_support }}_{{ mtproxy_release }}"
+        removes: "{{ mtproxy_installdir }}/mtproto-proxy-linux-x86_64{{ '_v3' if mtproxy_avx2bmi2_support }}"
+        creates: "{{ mtproxy_installdir }}/mtproto-proxy-linux-x86_64{{ '_v3' if mtproxy_avx2bmi2_support }}_{{ mtproxy_release }}"
+
+    - name: create link
+      ansible.builtin.file:
+        state: link
+        # src: "{{ mtproxy_installdir }}/mtproto-proxy-linux-x86_64{{ '_v3' if mtproxy_avx2bmi2_support }}_{{ mtproxy_release }}"
+        src: "mtproto-proxy-linux-x86_64{{ '_v3' if mtproxy_avx2bmi2_support }}_{{ mtproxy_release }}"
+        dest: "{{ mtproxy_installdir }}/{{ mtproxy_bin }}"
+        owner: "{{ mtproxy_service_user }}"
+        group: "{{ mtproxy_service_group }}"
+
+- name: create secret
+  block:
+    - name: check file exists
+      ansible.builtin.stat:
+        path: "{{ mtproxy_installdir }}/{{ mtproxy_secret }}"
+      register: mtproxy_result
+
+    - name: create file
+      ansible.builtin.copy:
+        dest: "{{ mtproxy_installdir }}/{{ mtproxy_secret }}"
+        owner: "{{ mtproxy_service_user }}"
+        group: "{{ mtproxy_service_group }}"
+        mode: '0600'
+        content: |
+          {{ lookup('ansible.builtin.password', '/dev/null chars=hexdigits length=32') }}
+      when: not mtproxy_result.stat.exists or mtproxy_force_secret | bool
+
+- name: lookup secret
+  block:
+    - name: Read remote file
+      ansible.builtin.slurp:
+        src: "{{ mtproxy_installdir }}/{{ mtproxy_secret }}"
+      register: mtproxy_result
+
+    - name: Set variable from remote file content
+      ansible.builtin.set_fact:
+        mtproxy_service_secret: "{{ mtproxy_result.content | b64decode }}"
+
+- name: create config.toml
+  ansible.builtin.copy:
+    dest: "{{ mtproxy_installdir }}/{{ mtproxy_config }}"
+    content: |
+      [server]
+      port = {{ mtproxy_service_port }}
+      max_connections = 512
+      idle_timeout_sec = 120
+      handshake_timeout_sec = 15
+      {% if mtproxy_haproxy %}
+      # address = {{ mtproxy_service_address }}
+      proxy-protocol = true
+      {% endif %}
+
+      [censorship]
+      tls_domain = {{ mtproxy_service_tlsdomain }}
+      mask = true
+      fast_mode = true
+
+      [access.users]
+      user = {{ mtproxy_service_secret }}
+  notify: restart mtproxy
+
+- name: create unit file
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/mtproxy.service
+    content: |
+      [Unit]
+      Description=MTProto Proxy (Zig)
+      Documentation=https://github.com/sleep3r/mtproto.zig
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      User={{ mtproxy_service_user }}
+      Group={{ mtproxy_service_group }}
+      WorkingDirectory={{ mtproxy_installdir }}
+      ExecStart={{ mtproxy_installdir }}/{{ mtproxy_bin }} {{ mtproxy_installdir }}/{{ mtproxy_config }}
+      Restart=always
+      RestartSec=3
+
+      # Security hardening
+      NoNewPrivileges=yes
+      ProtectSystem=strict
+      ProtectHome=yes
+      PrivateTmp=yes
+      ReadOnlyPaths={{ mtproxy_installdir }}
+
+      # Allow binding to privileged ports (443)
+      AmbientCapabilities=CAP_NET_BIND_SERVICE
+      CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+      # Limits
+      LimitNOFILE=131582
+      TasksMax=65535
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - restart mtproxy
+
+- name: systemctl daemon-reload
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: systemctl enable mtproxy.service
+  ansible.builtin.systemd_service:
+    name: mtproxy.service
+    enabled: true
+
+# frontend https-in
+#     bind *:443
+#     mode tcp
+#     tcp-request inspect-delay 5s
+#     tcp-request content accept if { req_ssl_hello_type 1 }
+
+#     # Перенаправляем по SNI (домен из Fake TLS секрета)
+#     use_backend mtproto_zig if { req_ssl_sni -i your-fake-domain.com }
+#     default_backend web_server
+
+# backend mtproto_zig
+#     mode tcp
+#     # send-proxy-v2 передает реальный IP клиента в mtproto.zig
+#     server mtproto_srv 127.0.0.1:1443 send-proxy-v2

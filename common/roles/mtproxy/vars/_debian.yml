@@ -1,0 +1,7 @@
+mtproxy_packages:
+  - xxd
+  - git
+  - curl
+  - openssl
+  - tar
+  - xz-utils
