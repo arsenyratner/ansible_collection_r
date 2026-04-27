@@ -21,7 +21,7 @@
   when: sambafs_dirs != []
   notify: restart samba
 
-- name: create group list
+- name: create list of groups
   ansible.builtin.set_fact:
     sambafs_groups: "{{
         sambafs_groups +
@@ -41,6 +41,15 @@
   loop: "{{ sambafs_groups }}"
   loop_control:
     loop_var: sambafs_item
+
+- name: create samba users and folders
+  ansible.builtin.include_tasks:
+    file: tasks/user.yml
+  loop: "{{ sambafs_users }}"
+  loop_control:
+    loop_var: sambafs_user
+    label: "{{ sambafs_user.name }}"
+  when: sambafs_users != []
 
 - name: create folders
   ansible.builtin.include_tasks:
@@ -63,12 +72,3 @@
     name: smbd
     enabled: true
   notify: restart samba
-
-- name: create samba users and folders
-  ansible.builtin.include_tasks:
-    file: tasks/user.yml
-  loop: "{{ sambafs_users }}"
-  loop_control:
-    loop_var: sambafs_user
-    label: "{{ sambafs_user.name }}"
-  when: sambafs_users != []
