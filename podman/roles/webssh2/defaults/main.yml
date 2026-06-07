@@ -11,6 +11,9 @@ pdmn_webssh2_ssh_port: 22
 pdmn_webssh2_header_text: WebSSH2
 pdmn_webssh2_http_origins: "*:*"
 
+pdmn_webssh2_systemd_dir: /etc/systemd/system
+pdmn_webssh2_force: false
+
 pdmn_webssh2_podname: webssh2
 pdmn_webssh2_publish: []
 pdmn_webssh2_pod_dir: "{{ pdmn_root_dir }}/{{ pdmn_webssh2_podname }}"

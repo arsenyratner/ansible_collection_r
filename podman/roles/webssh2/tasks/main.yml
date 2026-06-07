@@ -1,16 +1,25 @@
----
-- name: create dirs list
+- name: Create dirs list
   ansible.builtin.set_fact:
-    pdmn_webssh2_dirs: |
+    pdmn_webssh2_dirs: >-
       {{
-        pdmn_webssh2_dirs | default([]) +
-        pdmn_webssh2_item.volumes | map('split', ':') | map('first') | map('community.general.dict_kv', 'path')
+        pdmn_webssh2_containers 
+
+        | selectattr('volumes', 'defined') 
+        | map(attribute='volumes') 
+        | flatten 
+
+        | map('split', ':') 
+        | map('first') 
+        | unique 
+
+        | map('community.general.dict_kv', 'path') 
+        | list
       }}
-  loop: "{{ pdmn_webssh2_containers }}"
-  loop_control:
-    loop_var: pdmn_webssh2_item
-    label: "{{ pdmn_webssh2_item.name }}"
-  when: pdmn_webssh2_item.volumes is defined
+
+- name: Debug
+  ansible.builtin.debug:
+    msg:
+      - "{{ pdmn_webssh2_dirs }}"
 
 - name: Create dirs
   ansible.builtin.file:
@@ -59,12 +68,56 @@
     restart_policy: "{{ pdmn_webssh2_item.restart | default('always') }}"
     requires: "{{ pdmn_webssh2_item.requires | default([]) }}"
     volume: "{{ (pdmn_webssh2_item.volumes | default([]) + pdmn_webssh2_item.files | default([])) }}"
-    healthcheck: "{{ pdmn_webssh2_item.healthcheck.test[1] | default(omit) }}"
-    healthcheck_interval: "{{ pdmn_webssh2_item.healthcheck.interval | default(omit) }}"
-    healthcheck_timeout: "{{ pdmn_webssh2_item.healthcheck.timeout | default(omit) }}"
-    healthcheck_retries: "{{ pdmn_webssh2_item.healthcheck.retries | default(omit) }}"
+    healthcheck: "{{ (pdmn_webssh2_item.healthcheck.test | default([]))[1] | default(omit) }}"
+    healthcheck_interval: "{{ (pdmn_webssh2_item.healthcheck | default({})).interval | default(omit) }}"
+    healthcheck_timeout: "{{ (pdmn_webssh2_item.healthcheck | default({})).timeout | default(omit) }}"
+    healthcheck_retries: "{{ (pdmn_webssh2_item.healthcheck | default({})).retries | default(omit) }}"
   loop: "{{ pdmn_webssh2_containers }}"
   loop_control:
     loop_var: pdmn_webssh2_item
     label: "{{ pdmn_webssh2_item.name }}"
   ignore_errors: true
+
+# - name: Create systemd directory for user if rootless
+#   ansible.builtin.file:
+#     path: "~/.config/systemd/user"
+#     state: directory
+#     mode: '0755'
+#   # Раскомментируйте строку ниже, если запускаете контейнеры НЕ от root
+#   # when: ansible_user_id != 'root'
+
+# - name: Generate systemd unit files for pod and containers
+#   ansible.builtin.command:
+#     cmd: "podman generate systemd --new --files --name {{ pdmn_webssh2_podname }}"
+#     chdir: "{{ (ansible_user_id == 'root') | ternary('/etc/systemd/system', '~/.config/systemd/user') }}"
+#   changed_when: true
+
+- name: Generate systemd unit files
+  containers.podman.podman_generate_systemd:
+    new: false
+    no_header: false
+    restart_policy: always
+    restart_sec: 60
+    use_names: true
+    dest: "{{ pdmn_webssh2_systemd_dir }}"
+    force: "{{ pdmn_webssh2_force }}"
+    name: "{{ pdmn_webssh2_podname }}"
+  notify: restart guacamole
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    scope: "{{ (ansible_user_id == 'root') | ternary('system', 'user') }}"
+
+- name: Enable and start pod service
+  ansible.builtin.systemd_service:
+    name: "pod-{{ pdmn_webssh2_podname }}.service"
+    enabled: true
+    state: started
+    scope: "{{ (ansible_user_id == 'root') | ternary('system', 'user') }}"
+
+- name: Enable linger for rootless user
+  ansible.builtin.command:
+    cmd: "loginctl enable-linger {{ ansible_user_id }}"
+  changed_when: false
+  when: ansible_user_id != 'root'
