@@ -44,3 +44,28 @@
   loop_control:
     loop_var: sambafs_share_item
   when: sambafs_set_permissions_flag 
+
+# - name: Step 1 - Recursively set baseline directory permissions once
+#   ansible.builtin.file:
+#     path: "{{ sambafs_folder_private }}/{{ sambafs_user.name }}"
+#     state: directory
+#     owner: "{{ sambafs_user.name }}"
+#     mode: '2770' # Sets SGID so new files inherit group ownership naturally
+#     recurse: true
+#   when: sambafs_set_permissions_flag and (sambafs_share_item.state | default('present') != 'absent')
+
+# - name: Step 2 - Apply POSIX ACL entry variations
+#   ansible.posix.acl:
+#     path: "{{ sambafs_folder_private }}/{{ sambafs_user.name }}"
+#     state: "{{ sambafs_share_item.state | default('present') }}"
+#     etype: "{{ sambafs_share_item.etype | default('group') }}"
+#     entity: "{{ sambafs_share_item.entity | default('') }}"
+#     permissions: "{{ sambafs_share_item.permissions }}"
+#     default: "{{ sambafs_share_item.default }}"
+#     recursive: true
+#   loop:
+#     - { default: false, permissions: 'rwx', etype: 'user', entity: "{{ sambafs_user.name }}" }
+#     - { default: true,  permissions: 'rwx', etype: 'user', entity: "{{ sambafs_user.name }}" }
+#   loop_control:
+#     loop_var: sambafs_share_item
+#   when: sambafs_set_permissions_flag

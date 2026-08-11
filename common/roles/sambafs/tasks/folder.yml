@@ -14,7 +14,7 @@
 
 - name: set permissions {{ sambafs_folder.path }}
   ansible.posix.acl:
-    recursive: true
+    recursive: false
     state: "{{ sambafs_share_item.state | default('present')}}"
     etype: "{{ sambafs_share_item.etype | default('group')}}"
     path: "{{ sambafs_folder.path }}"
