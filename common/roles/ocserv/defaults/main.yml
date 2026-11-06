@@ -1,3 +1,4 @@
+ocserv_auth: "plain[passwd={{ ocserv_passwd_file }}]"
 ocserv_fqdn: "{{ inventory_hostname }}"
 ocserv_conf_dir: "/etc/ocserv"
 ocserv_configpergroup_dir: "{{ ocserv_conf_dir }}/group.d"
