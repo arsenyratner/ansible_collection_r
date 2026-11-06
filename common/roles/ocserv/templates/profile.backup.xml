@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AnyConnectProfile xmlns="http://schemas.xmlsoap.org/encoding/"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/encoding/ AnyConnectProfile.xsd">
+	<ClientInitialization>
+		<UseStartBeforeLogon UserControllable="false">false</UseStartBeforeLogon>
+		<StrictCertificateTrust>false</StrictCertificateTrust>
+		<RestrictPreferenceCaching>false</RestrictPreferenceCaching>
+		<RestrictTunnelProtocols>IPSec</RestrictTunnelProtocols>
+		<BypassDownloader>true</BypassDownloader>
+		<WindowsVPNEstablishment>AllowRemoteUsers</WindowsVPNEstablishment>
+		<CertEnrollmentPin>pinAllowed</CertEnrollmentPin>
+		<CertificateMatch>
+			<KeyUsage>
+				<MatchKey>Digital_Signature</MatchKey>
+			</KeyUsage>
+			<ExtendedKeyUsage>
+				<ExtendedMatchKey>ClientAuth</ExtendedMatchKey>
+			</ExtendedKeyUsage>
+		</CertificateMatch>
+		<AuthenticationMethod>Certificate</AuthenticationMethod>
+	</ClientInitialization>
+
+	<ServerList>
+		<HostEntry>
+			<HostName>{{ ocserv_fqdn }}</HostName>
+			<HostAddress>{{ ocserv_fqdn }}</HostAddress>
+			<BackupServerList>
+				<HostAddress>{{ ocserv_fqdn }}</HostAddress>
+				<HostAddress>{{ ocserv_fqdn }}</HostAddress>
+			</BackupServerList>
+		</HostEntry>
+	</ServerList>
+</AnyConnectProfile>
