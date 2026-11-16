@@ -9,6 +9,8 @@ squid_group: ""
 squid_port: 3128 
 
 squid_acls: []
+# acl {{ acl.name }} {{ acl.type }} {{ acl.arg }}
+# name: type: arg:
 
 squid_dirs: 
   - "{{ squid_conf_dir }}"
